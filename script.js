@@ -188,7 +188,7 @@ async function handlePanelSubmit(e) {
   showResult(resultBox, "Membuat panel...", "loading");
 
   try {
-    const res = await fetch("https://api-green-iota.vercel.app/api/create", {
+    const res = await fetch("https://api-green-iota.vercel.app/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, email, ram, disk, cpu })
@@ -249,7 +249,7 @@ async function handleAdminSubmit(e) {
   showResult(resultBox, "Membuat admin...", "loading");
 
   try {
-    const res = await fetch("https://api-green-iota.vercel.app/api/create-admin", {
+    const res = await fetch("https://api-green-iota.vercel.app/create-admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, email })
@@ -304,7 +304,7 @@ async function fetchServers() {
   `;
 
   try {
-    const res = await fetch("https://api-green-iota.vercel.app/api/servers");
+    const res = await fetch("https://api-green-iota.vercel.app/servers");
     const servers = await res.json();
     
     if (!Array.isArray(servers)) {
@@ -333,6 +333,254 @@ async function fetchServers() {
 
     container.innerHTML = servers.map(srv => `
       <div class="server-item" data-id="${srv.attributes.id}">
+        <div class="server-info">
+          <span class="server-name">${srv.attributes.name || 'Tanpa Nama'}</span>
+          <span class="server-id">ID: ${srv.attributes.id}</span>
+        </div>
+        <button class="delete-btn" onclick="deleteServer('${srv.attributes.id}')" title="Hapus Server">
+          ×
+        </button>
+      </div>
+    `).join('');
+    
+  } catch (err) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <p>Error mengambil data server: ${err.message}</p>
+      </div>
+    `;
+  }
+}
+
+async function deleteServer(id) {
+  if (!confirm("Yakin ingin menghapus server ini? Tindakan ini tidak dapat dibatalkan.")) {
+    return;
+  }
+
+  const serverItem = document.querySelector(`[data-id="${id}"]`);
+  if (serverItem) {
+    serverItem.style.opacity = '0.5';
+    serverItem.style.pointerEvents = 'none';
+  }
+
+  try {
+    const res = await fetch(`https://api-green-iota.vercel.app/server/${id}`, {
+      method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      // Remove from DOM with animation
+      if (serverItem) {
+        serverItem.style.transform = 'translateX(-100%)';
+        setTimeout(() => {
+          fetchServers(); // Refresh the list
+        }, 300);
+      }
+    } else {
+      alert("Gagal hapus server: " + (data.error || "Unknown error"));
+      if (serverItem) {
+        serverItem.style.opacity = '1';
+        serverItem.style.pointerEvents = 'auto';
+      }
+    }
+  } catch (err) {
+    alert("Error saat hapus server: " + err.message);
+    if (serverItem) {
+      serverItem.style.opacity = '1';
+      serverItem.style.pointerEvents = 'auto';
+    }
+  }
+}
+
+// Admin management
+async function fetchAdmins() {
+  const container = document.getElementById("adminList");
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Memuat daftar admin...</p>
+    </div>
+  `;
+
+  try {
+    const res = await fetch("https://api-green-iota.vercel.app/admins");
+    const admins = await res.json();
+    
+    if (!Array.isArray(admins)) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <p>Gagal mengambil data admin.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const filtered = admins.filter(a => a.username && a.username.trim() !== "");
+    
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <h4>Tidak ada admin</h4>
+          <p>Belum ada admin yang dibuat. Buat admin pertama!</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = filtered.map(admin => `
+      <div class="admin-item" data-id="${admin.id}">
+        <div class="admin-info">
+          <span class="admin-name">${admin.username}</span>
+          <span class="admin-email">${admin.email || 'No email'}</span>
+        </div>
+        <button class="delete-btn" onclick="deleteAdmin('${admin.id}')" title="Hapus Admin">
+          ×
+        </button>
+      </div>
+    `).join('');
+    
+  } catch (err) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <p>Error mengambil data admin: ${err.message}</p>
+      </div>
+    `;
+  }
+}
+
+async function deleteAdmin(id) {
+  if (!confirm("Yakin ingin menghapus admin ini? Tindakan ini tidak dapat dibatalkan.")) {
+    return;
+  }
+
+  const adminItem = document.querySelector(`[data-id="${id}"]`);
+  if (adminItem) {
+    adminItem.style.opacity = '0.5';
+    adminItem.style.pointerEvents = 'none';
+  }
+
+  try {
+    const res = await fetch(`https://api-green-iota.vercel.app/admin/${id}`, {
+      method: "DELETE"
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      // Remove from DOM with animation
+      if (adminItem) {
+        adminItem.style.transform = 'translateX(-100%)';
+        setTimeout(() => {
+          fetchAdmins(); // Refresh the list
+        }, 300);
+      }
+    } else {
+      alert("Gagal hapus admin: " + (data.error || "Unknown error"));
+      if (adminItem) {
+        adminItem.style.opacity = '1';
+        adminItem.style.pointerEvents = 'auto';
+      }
+    }
+  } catch (err) {
+    alert("Error saat hapus admin: " + err.message);
+    if (adminItem) {
+      adminItem.style.opacity = '1';
+      adminItem.style.pointerEvents = 'auto';
+    }
+  }
+}
+
+// Utility functions
+function showResult(container, message, type) {
+  if (!container) return;
+  
+  container.innerHTML = message;
+  container.className = `result-box show ${type}`;
+  
+  // Auto hide after 10 seconds for success messages
+  if (type === 'success') {
+    setTimeout(() => {
+      container.classList.remove('show');
+    }, 10000);
+  }
+}
+
+function showButtonLoading(button, loading) {
+  if (!button) return;
+  
+  const btnText = button.querySelector('.btn-text');
+  const btnLoader = button.querySelector('.btn-loader');
+  
+  if (loading) {
+    button.disabled = true;
+    if (btnText) btnText.classList.add('hidden');
+    if (btnLoader) btnLoader.classList.remove('hidden');
+  } else {
+    button.disabled = false;
+    if (btnText) btnText.classList.remove('hidden');
+    if (btnLoader) btnLoader.classList.add('hidden');
+  }
+}
+
+function logout() {
+  if (confirm("Yakin ingin logout?")) {
+    sessionStorage.clear();
+    window.location.href = "index.html";
+  }
+}
+
+// Add smooth scrolling and page transitions
+window.addEventListener('load', function() {
+  document.body.classList.add('loaded');
+});
+
+// Add keyboard navigation
+document.addEventListener('keydown', function(e) {
+  // Escape key to close modals or go back
+  if (e.key === 'Escape') {
+    const activeModal = document.querySelector('.modal.active');
+    if (activeModal) {
+      activeModal.classList.remove('active');
+    }
+  }
+});
+
+// Add touch gestures for mobile
+let touchStartX = 0;
+let touchEndX = 0;
+
+document.addEventListener('touchstart', function(e) {
+  touchStartX = e.changedTouches[0].screenX;
+});
+
+document.addEventListener('touchend', function(e) {
+  touchEndX = e.changedTouches[0].screenX;
+  handleSwipe();
+});
+
+function handleSwipe() {
+  const swipeThreshold = 50;
+  const diff = touchStartX - touchEndX;
+  
+  if (Math.abs(diff) > swipeThreshold) {
+    if (diff > 0) {
+      // Swipe left - next section
+      // You can implement section navigation here
+    } else {
+      // Swipe right - previous section
+      // You can implement section navigation here
+    }
+  }
+}
+ttributes.id}">
         <div class="server-info">
           <span class="server-name">${srv.attributes.name || 'Tanpa Nama'}</span>
           <span class="server-id">ID: ${srv.attributes.id}</span>
